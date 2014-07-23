@@ -1,10 +1,16 @@
 from flask import Flask
 from flask import jsonify
 from flask import g
+from flask import render_template
+
+from flask.ext.socketio import SocketIO, emit
 
 import psycopg2
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
+app.debug = True
 
 def get_db():
 	if not hasattr(g, 'database'):
@@ -16,9 +22,9 @@ def close_db(error):
 	if hasattr(g,'database'):
 		g.database.close()
 
-@app.route('/')
-def hello_world():
-    return 'Hello World!'
+#@app.route('/')
+#def hello_world():
+    #return 'Hello World!'
 
 @app.route('/smoker',methods=['GET'])
 def list_smokers():
@@ -51,16 +57,36 @@ def list_io(smoker_id):
 
 	return jsonify(smoker_io=io)
 
-@app.route('/values/latest/<int:io_dev_id>',methods=['GET'])
-def get_io_values(io_dev_id):
+@app.route('/values/<int:smoker_id>/<varname>',methods=['GET'])
+def get_io_values(smoker_id,varname):
 	db = get_db()
 	cursor = db.cursor()
-	cursor.execute("""select time,value from values where smoker_io_id = %s order by time desc limit 1;""",(io_dev_id,))
+	cursor.execute("""select time,value from values join smoker_io on smoker_io.id = values.smoker_io_id where varname = %s and smoker_io.smoker_id = %s order by time desc limit 1;""",(varname,smoker_id))
 	val = cursor.fetchone()
 	cursor.close()
 
 	return jsonify(time=val[0],value=val[1])
 	
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@socketio.on('my event', namespace='/test')
+def test_message(message):
+    emit('my response', {'data': message['data']})
+
+@socketio.on('my broadcast event', namespace='/test')
+def test_message(message):
+    emit('my response', {'data': message['data']}, broadcast=True)
+
+@socketio.on('connect', namespace='/test')
+def test_connect():
+    emit('my response', {'data': 'Connected'})
+
+@socketio.on('disconnect', namespace='/test')
+def test_disconnect():
+    print('Client disconnected')
+
 
 if __name__ == '__main__':
-    app.run()
+    socketio.run(app, host="0.0.0.0",port=8000)
