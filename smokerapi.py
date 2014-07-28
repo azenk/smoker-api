@@ -61,11 +61,11 @@ def list_io(smoker_id):
 def get_io_values(smoker_id,varname):
 	db = get_db()
 	cursor = db.cursor()
-	cursor.execute("""select time,value from values join smoker_io on smoker_io.id = values.smoker_io_id where varname = %s and smoker_io.smoker_id = %s order by time desc limit 1;""",(varname,smoker_id))
+	cursor.execute("""select time,value,unit_abbrev from values join smoker_io on smoker_io.id = values.smoker_io_id where varname = %s and smoker_io.smoker_id = %s order by time desc limit 1;""",(varname,smoker_id))
 	val = cursor.fetchone()
 	cursor.close()
 
-	return jsonify(time=val[0],value=val[1])
+	return jsonify(time=val[0],value=val[1],units=val[2])
 
 @app.route('/smoker/<int:smoker_id>/power/batterycharge',methods=['GET'])
 def get_battery_charge(smoker_id):
@@ -75,19 +75,21 @@ def get_battery_charge(smoker_id):
 	val = cursor.fetchone()
 	cursor.close()
 	voltage = val[1]
+
 	if (voltage > 12.8):
 		charge = 100.0
-	elif (voltage <= 12.8 and voltage > 12.5):
-		charge = (voltage - 12.5) / (12.8 - 12.5) * 25.0 + 75
-	elif (voltage <= 12.5 and voltage > 12.0):
-		charge = (voltage - 12.0) / (12.5 - 12.0) * 25.0 + 50
-	elif (voltage <= 12.0 and voltage > 11.5):
-		charge = (voltage - 11.5) / (12.0 - 11.5) * 25.0 + 25
-	elif (voltage <= 11.5 and voltage > 10.5):
-		charge = (voltage - 10.5) / (11.5 - 10.5) * 25.0 
+	elif (voltage <= 12.8 and voltage > 12.6):
+		charge = (voltage - 12.6) / (12.8 - 12.6) * 25.0 + 75
+	elif (voltage <= 12.6 and voltage > 12.3):
+		charge = (voltage - 12.3) / (12.6 - 12.3) * 25.0 + 50
+	elif (voltage <= 12.3 and voltage > 12.0):
+		charge = (voltage - 12.0) / (12.3 - 12.0) * 25.0 + 25
+	elif (voltage <= 12.0 and voltage > 11.8):
+		charge = (voltage - 11.8) / (12.0 - 11.8) * 25.0 
 	else:
 		charge = 0
-	return jsonify(time=val[0],value=charge)
+
+	return jsonify(time=val[0],value=charge,units='%')
 	
 @app.route('/')
 def index():
