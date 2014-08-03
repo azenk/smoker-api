@@ -4,14 +4,28 @@ from flask import g
 from flask import render_template
 from flask import request
 
+from flask_googlelogin import GoogleLogin
+from flask_login import login_required, login_user, logout_user
+from flask.ext.login import current_user
+from flask import redirect,session
+
 from datetime import datetime
 
 from smokerlib import *
+import smokerconfig 
 
 import psycopg2
 
 app = Flask(__name__)
+app.secret_key = smokerconfig.sessionsecret
+app.config["GOOGLE_LOGIN_CLIENT_ID"] = smokerconfig.google_client_id
+app.config["GOOGLE_LOGIN_CLIENT_SECRET"] = smokerconfig.google_client_secret
+app.config["GOOGLE_LOGIN_SCOPES"] = "https://www.googleapis.com/auth/plus.login"
+app.config["GOOGLE_LOGIN_REDIRECT_URI"] = "https://smoker.culinaryapparatus.com/devapi/oauth2callback"
+app.config["GOOGLE_LOGIN_REDIRECT_SCHEME"] = "https"
 app.debug = True
+googlelogin = GoogleLogin()
+googlelogin.init_app(app)
 
 def get_db():
 	if not hasattr(g, 'database'):
@@ -23,6 +37,26 @@ def close_db(error):
 	if hasattr(g,'database'):
 		g.database.close()
 
+@app.route('/oauth2callback')
+@googlelogin.oauth2callback
+def create_or_update_user(token, userinfo, **params):
+	user = User(userinfo['id'])
+	user.name = userinfo['name']
+	login_user(user)
+	return redirect('/')
+
+@googlelogin.user_loader
+def get_user(userid):
+    return User(userid)
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    session.clear()
+    return """
+        <p>Logged out</p>
+        <p><a href="/">Return to /</a></p>
+        """
 #@app.route('/')
 #def hello_world():
     #return 'Hello World!'
@@ -59,6 +93,7 @@ def list_io(smoker_id):
 	return jsonify(smoker_io=io)
 
 @app.route('/values/<int:smoker_id>/<varname>',methods=['GET'])
+@login_required
 def get_io_values(smoker_id,varname):
 	db = get_db()
 	cursor = db.cursor()
@@ -85,6 +120,7 @@ def get_io_values(smoker_id,varname):
 		val = cursor.fetchall()
 		cursor.close()
 		wi = weighted_intervals(val,time_interval)
+		wi.append(current_user.name)
 		return jsonify(result=wi)
 
 

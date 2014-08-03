@@ -1,0 +1,3 @@
+sessionsecret = '<secret session key>'
+google_client_id = 'client id from dev console'
+google_client_secret = 'client secret from dev console'
