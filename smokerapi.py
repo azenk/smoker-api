@@ -2,8 +2,13 @@ from flask import Flask
 from flask import jsonify
 from flask import g
 from flask import render_template
+from flask import request
+
+from datetime import datetime
 
 from flask.ext.socketio import SocketIO, emit
+
+from smokerlib import *
 
 import psycopg2
 
@@ -61,11 +66,31 @@ def list_io(smoker_id):
 def get_io_values(smoker_id,varname):
 	db = get_db()
 	cursor = db.cursor()
-	cursor.execute("""select time,value,unit_abbrev from values join smoker_io on smoker_io.id = values.smoker_io_id where varname = %s and smoker_io.smoker_id = %s order by time desc limit 1;""",(varname,smoker_id))
-	val = cursor.fetchone()
-	cursor.close()
 
-	return jsonify(time=val[0],value=val[1],units=val[2])
+	starttime = request.args.get('start','')
+	interval = request.args.get('interval',15)
+	time_interval = int(interval)
+	#try:
+		#start = datetime.strptime(starttime,'%Y%m%d-%H:%M:%S.%f')
+	#except:
+		#start = None
+
+	if starttime == '':
+		cursor.execute("""select time,value,unit_abbrev from values join smoker_io on smoker_io.id = values.smoker_io_id where varname = %s and smoker_io.smoker_id = %s order by time desc limit 1;""",(varname,smoker_id))
+		val = cursor.fetchone()
+		cursor.close()
+		return jsonify(time=val[0],value=val[1],units=val[2])
+	else:
+		start = datetime.strptime(starttime,'%Y%m%d-%H:%M:%S.%f')
+		cursor.execute("""select time,value
+					from values join smoker_io on smoker_io.id = values.smoker_io_id 
+					where varname = %s and smoker_io.smoker_id = %s and time > %s order by time;""",
+					(varname,smoker_id,start))
+		val = cursor.fetchall()
+		cursor.close()
+		wi = weighted_intervals(val,time_interval)
+		return jsonify(result=wi)
+
 
 @app.route('/smoker/<int:smoker_id>/power/batterycharge',methods=['GET'])
 def get_battery_charge(smoker_id):
