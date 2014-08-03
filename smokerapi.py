@@ -40,14 +40,39 @@ def close_db(error):
 @app.route('/oauth2callback')
 @googlelogin.oauth2callback
 def create_or_update_user(token, userinfo, **params):
+	db = get_db()
+	cursor = db.cursor()
+	cursor.execute("select google_id,name from users where google_id = %s;",(userinfo["id"],))
+	dbval = cursor.fetchone()
+	if dbval == None:
+		# create user
+		cursor.execute("insert into users (google_id,name) VALUES (%(id)s,%(name)s);",userinfo)
+		pass
+	else:
+		# update user if required
+		pass
+
+	db.commit()
 	user = User(userinfo['id'])
 	user.name = userinfo['name']
 	login_user(user)
-	return redirect('/')
+	return redirect('/client/SmokerGraphs.html')
+
+@app.route("/login")
+@login_required
+def login():
+	return redirect('/client/SmokerGraphs.html')
 
 @googlelogin.user_loader
 def get_user(userid):
-    return User(userid)
+	db = get_db()
+	cursor = db.cursor()
+	cursor.execute("select google_id,name from users where google_id = %s;",(userid,))
+	dbval = cursor.fetchone()
+
+	user = User(dbval[0])
+	user.name = dbval[1]
+	return user
 
 @app.route('/logout')
 def logout():
@@ -57,6 +82,10 @@ def logout():
         <p>Logged out</p>
         <p><a href="/">Return to /</a></p>
         """
+@app.route('/profile')
+@login_required
+def profile():
+	return "Hello %s" % current_user.name
 #@app.route('/')
 #def hello_world():
     #return 'Hello World!'
@@ -93,7 +122,6 @@ def list_io(smoker_id):
 	return jsonify(smoker_io=io)
 
 @app.route('/values/<int:smoker_id>/<varname>',methods=['GET'])
-@login_required
 def get_io_values(smoker_id,varname):
 	db = get_db()
 	cursor = db.cursor()
@@ -120,7 +148,6 @@ def get_io_values(smoker_id,varname):
 		val = cursor.fetchall()
 		cursor.close()
 		wi = weighted_intervals(val,time_interval)
-		wi.append(current_user.name)
 		return jsonify(result=wi)
 
 
