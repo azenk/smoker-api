@@ -93,7 +93,7 @@ def interpolate(data,time):
 					else:
 						i = i + step
 
-					print data[i-1][0],data[i][0],i
+					#print data[i-1][0],data[i][0],i
 					
 					if i < 1:
 						i = 1
