@@ -11,14 +11,30 @@ def weightedstats(data):
 	totalseconds = totaltime.days * 24*3600.0 + totaltime.seconds + totaltime.microseconds / 1000000.0
 	tsec = 0.0
 	accum = 0.0
+	stats["min"] = data[0]
+	stats["max"] = data[0]
+
+	if data[datapts - 1][1] < stats["min"][1]:
+		stats["min"] = data[datapts - 1]
+	if data[datapts - 1][1] > stats["max"][1]:
+		stats["max"] = data[datapts - 1]
+
 	for i in range(0,datapts-1):
 		smpltime = (data[i+1][0] - data[i][0])
 		seconds = smpltime.days * 24*3600.0 + smpltime.seconds + smpltime.microseconds / 1000000.0
+
+		if data[i][1] < stats["min"][1]:
+			stats["min"] = data[i]
+		if data[i][1] > stats["max"][1]:
+			stats["max"] = data[i]
+
 		value = (data[i+1][1] + data[i][1])/2.0
 		#print seconds,value
 		accum += value*seconds
 		tsec += seconds
 	#print totalseconds,tsec,accum
+	stats["min"] = {"time":stats["min"][0],"value":stats["min"][1]}
+	stats["max"] = {"time":stats["max"][0],"value":stats["max"][1]}
 	stats["avg"] = accum / tsec
 	return stats
 
@@ -60,7 +76,7 @@ def weighted_intervals(data,interval_seconds):
 			end_value = interpolate(data,end_time)
 			bucketdata.append((end_time,end_value))
 		stats = weightedstats(bucketdata)
-		avgs.append({"end_time" : end_time,"avg" :  stats["avg"]})
+		avgs.append({"end_time" : end_time,"avg" :  stats["avg"],"min": stats["min"],"max":stats["max"]})
 	avgs.sort(lambda x,y:  1 if x["end_time"] > y["end_time"] else -1)
 
 	return avgs
