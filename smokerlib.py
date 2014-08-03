@@ -28,7 +28,7 @@ def weighted_intervals(data,interval_seconds):
 	epoch = datetime(1970,1,1,tzinfo=pytz.timezone('UTC'))
 	bucketparams["mintime"] = timedelta_seconds(data[0][0] - epoch)
 	bucketparams["mintime"] = bucketparams["mintime"] - bucketparams["mintime"] % bucketparams["interval"]
-	bucketparams["maxtime"] = timedelta_seconds(data[1][0] - epoch)
+	bucketparams["maxtime"] = timedelta_seconds(data[len(data)-1][0] - epoch)
 	bucketparams["maxtime"] = bucketparams["maxtime"] - bucketparams["maxtime"] % bucketparams["interval"] + bucketparams["interval"]
 
 	# Populate full dict of buckets
@@ -46,13 +46,15 @@ def weighted_intervals(data,interval_seconds):
 		buckets[bucket].append((time,value))
 	avgs = []
 
+	mintime = datetime.utcfromtimestamp(bucketparams["mintime"]).replace(tzinfo=pytz.timezone("UTC"))
+	maxtime = datetime.utcfromtimestamp(bucketparams["maxtime"]).replace(tzinfo=pytz.timezone("UTC"))
 	for unixtime,bucketdata in buckets.iteritems():
 		start_time = datetime.utcfromtimestamp(unixtime).replace(tzinfo=pytz.timezone("UTC"))
-		if start_time != bucketparams["mintime"]:
+		if start_time != mintime:
 			start_value = interpolate(data,start_time)
 			bucketdata.insert(0,(start_time,start_value))
 		end_time = datetime.utcfromtimestamp(unixtime + bucketparams["interval"]).replace(tzinfo=pytz.timezone("UTC"))
-		if end_time != bucketparams["maxtime"]:
+		if end_time != maxtime:
 			end_value = interpolate(data,end_time)
 			bucketdata.append((end_time,end_value))
 		avgs.append({"end_time" : end_time, "avg" :  weightedavg(bucketdata)})
