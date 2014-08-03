@@ -4,7 +4,8 @@ import pytz
 def timedelta_seconds(td):
 	return td.days * 24 * 3600 + td.seconds + td.microseconds / 1000000.0
 
-def weightedavg(data):
+def weightedstats(data):
+	stats = dict()
 	datapts = len(data) - len(data) % 2
 	totaltime = (data[datapts - 1][0] - data[0][0])
 	totalseconds = totaltime.days * 24*3600.0 + totaltime.seconds + totaltime.microseconds / 1000000.0
@@ -18,7 +19,8 @@ def weightedavg(data):
 		accum += value*seconds
 		tsec += seconds
 	#print totalseconds,tsec,accum
-	return accum / tsec
+	stats["avg"] = accum / tsec
+	return stats
 
 
 def weighted_intervals(data,interval_seconds):
@@ -57,7 +59,8 @@ def weighted_intervals(data,interval_seconds):
 		if end_time != maxtime:
 			end_value = interpolate(data,end_time)
 			bucketdata.append((end_time,end_value))
-		avgs.append({"end_time" : end_time, "avg" :  weightedavg(bucketdata)})
+		stats = weightedstats(bucketdata)
+		avgs.append({"end_time" : end_time,"avg" :  stats["avg"]})
 	avgs.sort(lambda x,y:  1 if x["end_time"] > y["end_time"] else -1)
 
 	return avgs
