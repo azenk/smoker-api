@@ -5,6 +5,8 @@ class User:
 	def __init__(self,userid):
 		self.id = userid
 		self._name = None
+		self._is_admin = False
+		self._update_allowed = False
 
 	@property
 	def name(self):
@@ -13,6 +15,30 @@ class User:
 	@name.setter
 	def set_name(self, name):
 		_name = name
+
+	@property
+	def email(self):
+		return _email
+
+	@email.setter
+	def set_email(self, value):
+		self._email = value
+		
+	@property
+	def is_administrator(self):
+		return _is_admin
+
+	@is_administrator.setter
+	def set_is_admin(self, value):
+		self._is_admin = value
+		
+	@property
+	def update_allowed(self):
+		return _update_allowed
+
+	@update_allowed.setter
+	def set_update_allowed(self, value):
+		self._update_allowed = value
 		
 	def is_authenticated(self):
 		return True
