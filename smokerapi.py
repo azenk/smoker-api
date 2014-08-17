@@ -46,6 +46,7 @@ def get_db():
 
 @app.teardown_appcontext
 def close_db(error):
+	database.db_session.remove()
 	if hasattr(g,'database'):
 		g.database.close()
 
@@ -54,23 +55,26 @@ def close_db(error):
 def create_or_update_user(token, userinfo, **params):
 	app.logger.debug("Entered OAUTH2 Callback")
 	app.logger.debug("Received oauth2 callback - userinfo: %s" % repr(userinfo))
-	db = get_db()
-	cursor = db.cursor()
-	cursor.execute("select google_id,name,email,administrator,update from users where google_id = %s;",(userinfo["id"],))
-	dbval = cursor.fetchone()
-	if dbval == None:
+
+	userq = User.query.filter(User.google_id == userinfo["id"])
+
+	if userq.count() < 1:
 		# create user
-		cursor.execute("insert into users (google_id,name) VALUES (%(id)s,%(name)s);",userinfo)
+		app.logger.debug("User not found, creating")
+		u = User(google_id=userinfo["id"],name=userinfo["name"])
+		database.db_session.add(u)
 	else:
 		# update user if required
-		if userinfo["name"] != dbval[1] or userinfo["email"] != dbval[2]:
-			cursor.execute("update users set name = %(name)s,email = %(email)s where google_id = %(id)s;",userinfo)
+		app.logger.debug("User found, updating")
+		u = userq.first()	
+		if userinfo["name"] != u.name:
+			u.name = userinfo["name"]
 
-	db.commit()
-	user = User(userinfo['id'])
-	user.name = userinfo['name']
-	login_user(user)
-	return redirect('/testform.html')
+	app.logger.debug("User %s" % u.name)
+	login_user(u)
+
+	database.db_session.commit()
+	return redirect('/client/SmokerGraphs.html')
 
 @app.route("/login")
 @login_required
@@ -79,19 +83,13 @@ def login():
 
 @googlelogin.user_loader
 def get_user(userid):
-	db = get_db()
-	cursor = db.cursor()
-	cursor.execute("select google_id,name,email,administrator,update from users where google_id = %s;",(userid,))
-	dbval = cursor.fetchone()
-
-	user = User(dbval[0])
-	user.name = dbval[1]
-	user.email = dbval[2]
-	user.is_administrator = dbval[3]
-	user.update_allowed = dbval[4]
+	app.logger.debug("Running user loader: id %s" % userid)
+	user = User.query.filter(User.id == userid).first()
+	app.logger.debug("User %s" % user.name)
 	return user
 
 @app.route('/logout')
+@login_required
 def logout():
     app.logger.debug("Logged out user %s" % current_user.name)
     logout_user()
@@ -100,6 +98,7 @@ def logout():
         <p>Logged out</p>
         <p><a href="/">Return to /</a></p>
         """
+
 @app.route('/profile')
 @login_required
 def profile():
