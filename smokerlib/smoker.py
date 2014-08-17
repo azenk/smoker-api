@@ -1,4 +1,4 @@
-from sqlalchemy import Table,Column,Integer,String,Enum,Float,ForeignKey,DateTime
+from sqlalchemy import Table,Column,Integer,String,Enum,Float,ForeignKey,DateTime,desc
 from sqlalchemy.orm import mapper,relationship,backref
 from database import metadata,db_session
 
@@ -27,6 +27,11 @@ class SmokerIO(object):
 
 	def __repr__(self):
 		return '<SmokerIO %r>' % (self.varname)
+
+	def latestvalue(self):
+		iovq = IOValue.query.join(IOValue.smoker_io).filter(SmokerIO.smoker_id == self.smoker_id).filter(SmokerIO.varname == self.varname)
+		value = iovq.order_by(desc(IOValue.time)).first()
+		return value
 
 smokerio_table = Table('smoker_io',metadata,
 	Column('id',Integer,primary_key=True),
