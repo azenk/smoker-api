@@ -10,7 +10,7 @@ class TimeData:
 	def __init__(self,data):
 		"""
 		params:
-		@data list of (time,value) tuples
+		@data list of IOValue Objects
 		"""
 		self._data = data
 
@@ -19,16 +19,18 @@ class TimeData:
 		bucketparams = dict()
 		bucketparams["interval"] = interval_seconds;
 		epoch = datetime(1970,1,1,tzinfo=pytz.timezone('UTC'))
-		bucketparams["mintime"] = timedelta_seconds(self._data[0][0] - epoch)
+		bucketparams["mintime"] = timedelta_seconds(self._data[0].time - epoch)
 		bucketparams["mintime"] = bucketparams["mintime"] - bucketparams["mintime"] % bucketparams["interval"]
-		bucketparams["maxtime"] = timedelta_seconds(self._data[len(self._data)-1][0] - epoch)
+		bucketparams["maxtime"] = timedelta_seconds(self._data[len(self._data)-1].time - epoch)
 		bucketparams["maxtime"] = bucketparams["maxtime"] - bucketparams["maxtime"] % bucketparams["interval"] + bucketparams["interval"]
 	
 		# Populate full dict of buckets
 		for time in range(bucketparams["mintime"],bucketparams["maxtime"],bucketparams["interval"]):
 			buckets[time] = []
 	
-		for time,value in self._data:
+		for obj in self._data:
+			time = obj.time
+			value = obj.value
 			#epoch.replace(tzinfo=time.tzinfo)
 			#epoch.replace(tzinfo=None)
 			#time.replace(tzinfo=None)
@@ -67,19 +69,19 @@ class TimeData:
 			# TODO: replace with binary search
 			if len(self._data) > 100:
 				loopnum = 1
-				if time < self._data[0][0]:
+				if time < self._data[0].time:
 					i = 0
-				elif time > self._data[len(self._data)-1][0]:
+				elif time > self._data[len(self._data)-1].time:
 					i = len(self._data) - 1
 				else:
 					i = len(self._data) / 2**loopnum
-					while (i > 0 and i <= len(self._data) - 1 and (self._data[i-1][0] > time or self._data[i][0] < time)):
+					while (i > 0 and i <= len(self._data) - 1 and (self._data[i-1].time > time or self._data[i].time < time)):
 						loopnum += 1
 						step = len(self._data) / 2**loopnum
 						if step == 0:
 							step = 1
 	
-						if self._data[i-1][0] > time:
+						if self._data[i-1].time > time:
 							i = i - step
 						else:
 							i = i + step
@@ -94,13 +96,13 @@ class TimeData:
 	
 			else:
 				i = 0
-				while(i < len(self._data) - 1 and self._data[i][0] < time):
+				while(i < len(self._data) - 1 and self._data[i].time < time):
 					i += 1
 	
 			prior_entry = self._data[i-1]
 			post_entry = self._data[i]
 	
-			value = (post_entry[1] - prior_entry[1])/timedelta_seconds(post_entry[0] - prior_entry[0]) * timedelta_seconds(time - prior_entry[0]) + prior_entry[1]
+			value = (post_entry.value - prior_entry.value)/timedelta_seconds(post_entry.time - prior_entry.time) * timedelta_seconds(time - prior_entry.time) + prior_entry.value
 			return value
 		else:
 			return None

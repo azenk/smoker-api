@@ -12,6 +12,7 @@ from flask import redirect,session
 from datetime import datetime
 
 from smokerlib import *
+from sqlalchemy import desc
 import smokerconfig 
 
 import psycopg2
@@ -20,7 +21,7 @@ app = Flask(__name__)
 app.secret_key = smokerconfig.sessionsecret
 app.config["GOOGLE_LOGIN_CLIENT_ID"] = smokerconfig.google_client_id
 app.config["GOOGLE_LOGIN_CLIENT_SECRET"] = smokerconfig.google_client_secret
-app.config["GOOGLE_LOGIN_SCOPES"] = "https://www.googleapis.com/auth/plus.login"
+#app.config["GOOGLE_LOGIN_SCOPES"] = ""
 app.config["GOOGLE_LOGIN_REDIRECT_URI"] = "https://smoker.culinaryapparatus.com/devapi/oauth2callback"
 app.config["GOOGLE_LOGIN_REDIRECT_SCHEME"] = "https"
 app.debug = True
@@ -56,7 +57,7 @@ def create_or_update_user(token, userinfo, **params):
 	user = User(userinfo['id'])
 	user.name = userinfo['name']
 	login_user(user)
-	return redirect('/client/SmokerGraphs.html')
+	return redirect('/testform.html')
 
 @app.route("/login")
 @login_required
@@ -92,34 +93,36 @@ def profile():
 
 @app.route('/smoker',methods=['GET'])
 def list_smokers():
-	db = get_db()
-	cursor = db.cursor()
-	cursor.execute("select * from smoker")
-	dbsmokers = cursor.fetchall()
-	cursor.close()
+	dbsmokers = Smoker.query.all()
 
 	smokers = []
 	for smoker in dbsmokers:
 		unit = dict()
-		unit['id'] = smoker[0]
-		unit['name'] = smoker[1]
+		unit['id'] = smoker.id
+		unit['name'] = smoker.name
 		smokers.append(unit)
 
 	return jsonify(smokers=smokers)
 
 @app.route('/smoker/<int:smoker_id>/io', methods=['GET'])
 def list_io(smoker_id):
-	db = get_db()
-	cursor = db.cursor()
-	cursor.execute("""select id,name,unit,unit_abbrev from smoker_io where smoker_id = %s;""",(smoker_id,))
-	db_io = cursor.fetchall()
-	cursor.close()
-
+	db_io = SmokerIO.query.filter(SmokerIO.smoker_id == smoker_id)
 	io = []
 	for io_dev in db_io:
-		io.append(dict(id=io_dev[0],name=io_dev[1],unit=io_dev[2],unit_abbrev=io_dev[3]))
+		io.append(dict(id=io_dev.id,name=io_dev.name,unit=io_dev.unit,unit_abbrev=io_dev.unit_abbrev))
 
 	return jsonify(smoker_io=io)
+
+@app.route('/smoker/<int:smoker_id>/parameters/<paramname>',methods=['POST'])
+@login_required
+def set_parameter(smoker_id,paramname):
+	if request.method == 'POST':
+		value = request.form['value']
+		io = SmokerIO.query.filter(SmokerIO.smoker_id == smoker_id).filter(SmokerIO.varname == paramname).first()
+		v = IOValue(smoker_io_id=io.id,value=value)
+		database.db_session.add(v)
+		database.db_session.commit()
+	return jsonify(return_value=0)
 
 @app.route('/values/<int:smoker_id>/<varname>',methods=['GET'])
 def get_io_values(smoker_id,varname):
@@ -129,36 +132,23 @@ def get_io_values(smoker_id,varname):
 	starttime = request.args.get('start','')
 	interval = request.args.get('interval',15)
 	time_interval = int(interval)
-	#try:
-		#start = datetime.strptime(starttime,'%Y%m%d-%H:%M:%S.%f')
-	#except:
-		#start = None
 
 	if starttime == '':
-		cursor.execute("""select time,value,unit_abbrev from values join smoker_io on smoker_io.id = values.smoker_io_id where varname = %s and smoker_io.smoker_id = %s order by time desc limit 1;""",(varname,smoker_id))
-		val = cursor.fetchone()
-		cursor.close()
-		return jsonify(time=val[0],value=val[1],units=val[2])
+		v = IOValue.query.join(IOValue.smoker_io).filter(SmokerIO.smoker_id == smoker_id).filter(SmokerIO.varname == varname).order_by(desc(IOValue.time)).first()	
+		return jsonify(time=v.time,value=v.value,units=v.smoker_io.unit_abbrev)
 	else:
 		start = datetime.strptime(starttime,'%Y%m%d-%H:%M:%S.%f')
-		cursor.execute("""select time,value
-					from values join smoker_io on smoker_io.id = values.smoker_io_id 
-					where varname = %s and smoker_io.smoker_id = %s and time > %s order by time;""",
-					(varname,smoker_id,start))
-		val = cursor.fetchall()
-		cursor.close()
-		wi = weighted_intervals(val,time_interval)
+		v = IOValue.query.join(IOValue.smoker_io).filter(SmokerIO.smoker_id == smoker_id).filter(SmokerIO.varname == varname).filter(IOValue.time > start).order_by(IOValue.time).all()	
+		data = TimeData(v)
+		wi = data.weighted_intervals(time_interval)
 		return jsonify(result=wi)
 
 
 @app.route('/smoker/<int:smoker_id>/power/batterycharge',methods=['GET'])
 def get_battery_charge(smoker_id):
-	db = get_db()
-	cursor = db.cursor()
-	cursor.execute("""select time,value from values join smoker_io on smoker_io.id = values.smoker_io_id where varname = %s and smoker_io.smoker_id = %s order by time desc limit 1;""",("batvoltage",smoker_id))
-	val = cursor.fetchone()
-	cursor.close()
-	voltage = val[1]
+	v = IOValue.query.join(IOValue.smoker_io).filter(SmokerIO.smoker_id == smoker_id).filter(SmokerIO.varname == 'batvoltage').order_by(desc(IOValue.time)).first()	
+
+	voltage = v.value
 
 	if (voltage > 12.8):
 		charge = 100.0
@@ -173,7 +163,7 @@ def get_battery_charge(smoker_id):
 	else:
 		charge = 0
 
-	return jsonify(time=val[0],value=charge,units='%')
+	return jsonify(time=v.time,value=charge,units='%')
 
 if __name__ == '__main__':
     socketio.run(app, host="0.0.0.0",port=8000)
