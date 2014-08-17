@@ -14,6 +14,8 @@ from datetime import datetime
 from smokerlib import *
 import smokerconfig 
 
+import sys
+
 import psycopg2
 
 app = Flask(__name__)
@@ -23,9 +25,18 @@ app.config["GOOGLE_LOGIN_CLIENT_SECRET"] = smokerconfig.google_client_secret
 app.config["GOOGLE_LOGIN_SCOPES"] = "https://www.googleapis.com/auth/userinfo.email"
 app.config["GOOGLE_LOGIN_REDIRECT_URI"] = "https://smoker.culinaryapparatus.com/devapi/oauth2callback"
 app.config["GOOGLE_LOGIN_REDIRECT_SCHEME"] = "https"
-app.debug = True
+app.debug = False
 googlelogin = GoogleLogin()
 googlelogin.init_app(app)
+
+if not app.debug:
+    import logging
+    from logging.handlers import RotatingFileHandler
+    file_handler = RotatingFileHandler("/websites/applogs/smokerapi.log",maxBytes=10*2**20,backupCount=7)
+    file_handler.setLevel(logging.DEBUG)
+    app.logger.setLevel(logging.DEBUG)
+    app.logger.addHandler(file_handler)
+
 
 def get_db():
 	if not hasattr(g, 'database'):
@@ -40,6 +51,8 @@ def close_db(error):
 @app.route('/oauth2callback')
 @googlelogin.oauth2callback
 def create_or_update_user(token, userinfo, **params):
+	app.logger.debug("Entered OAUTH2 Callback")
+	app.logger.debug("Received oauth2 callback - userinfo: %s" % repr(userinfo))
 	db = get_db()
 	cursor = db.cursor()
 	cursor.execute("select google_id,name,email,administrator,update from users where google_id = %s;",(userinfo["id"],))
@@ -61,21 +74,25 @@ def create_or_update_user(token, userinfo, **params):
 @app.route("/login")
 @login_required
 def login():
-	return redirect('/client/SmokerGraphs.html')
+	return redirect('/api/profile')
 
 @googlelogin.user_loader
 def get_user(userid):
 	db = get_db()
 	cursor = db.cursor()
-	cursor.execute("select google_id,name from users where google_id = %s;",(userid,))
+	cursor.execute("select google_id,name,email,administrator,update from users where google_id = %s;",(userid,))
 	dbval = cursor.fetchone()
 
 	user = User(dbval[0])
 	user.name = dbval[1]
+	user.email = dbval[2]
+	user.is_administrator = dbval[3]
+	user.update_allowed = dbval[4]
 	return user
 
 @app.route('/logout')
 def logout():
+    app.logger.debug("Logged out user %s" % current_user.name)
     logout_user()
     session.clear()
     return """
