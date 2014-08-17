@@ -126,8 +126,6 @@ def set_parameter(smoker_id,paramname):
 
 @app.route('/values/<int:smoker_id>/<varname>',methods=['GET'])
 def get_io_values(smoker_id,varname):
-	db = get_db()
-	cursor = db.cursor()
 
 	starttime = request.args.get('start','')
 	interval = request.args.get('interval',15)
