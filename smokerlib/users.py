@@ -19,7 +19,7 @@ class User(object):
 		return False
 
 	def get_id(self):
-		return unicode(self.id)
+		return unicode(self.google_id)
 
 user_table = Table('users',metadata,
 	Column('id',Integer,primary_key=True),

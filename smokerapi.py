@@ -91,17 +91,17 @@ def login():
 @googlelogin.user_loader
 def get_user(userid):
 	app.logger.debug("Running user loader: id %s" % userid)
-	user = User.query.filter(User.id == userid).first()
+	user = User.query.filter(User.google_id == userid).first()
 	app.logger.debug("User %s" % user.name)
 	return user
 
 @app.route('/logout')
-@login_required
 def logout():
-    app.logger.debug("Logged out user %s" % current_user.name)
-    logout_user()
-    session.clear()
-    return """
+	if current_user.is_authenticated():
+		app.logger.debug("Logged out user %s" % current_user.name)
+		logout_user()
+		session.clear()
+	return """
         <p>Logged out</p>
         <p><a href="/">Return to /</a></p>
         """
