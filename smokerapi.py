@@ -43,15 +43,15 @@ def close_db(error):
 def create_or_update_user(token, userinfo, **params):
 	db = get_db()
 	cursor = db.cursor()
-	cursor.execute("select google_id,name from users where google_id = %s;",(userinfo["id"],))
+	cursor.execute("select google_id,name,email,administrator,update from users where google_id = %s;",(userinfo["id"],))
 	dbval = cursor.fetchone()
 	if dbval == None:
 		# create user
 		cursor.execute("insert into users (google_id,name) VALUES (%(id)s,%(name)s);",userinfo)
-		pass
 	else:
 		# update user if required
-		pass
+		if userinfo["name"] != dbval[1] or userinfo["email"] != dbval[2]:
+			cursor.execute("update users set name = %(name)s,email = %(email)s where google_id = %(id)s;",userinfo)
 
 	db.commit()
 	user = User(userinfo['id'])
@@ -86,7 +86,7 @@ def logout():
 @app.route('/profile')
 @login_required
 def profile():
-	return "Hello %s" % current_user.name
+	return "Hello %s %s" % (current_user.name,current_user.email)
 #@app.route('/')
 #def hello_world():
     #return 'Hello World!'
