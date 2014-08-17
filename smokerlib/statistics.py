@@ -1,5 +1,6 @@
 from datetime import datetime
 import pytz
+from smoker import IOValue
 
 def timedelta_seconds(td):
 	return td.days * 24 * 3600 + td.seconds + td.microseconds / 1000000.0
@@ -38,7 +39,7 @@ class TimeData:
 			bucket = unixtime - unixtime % bucketparams["interval"]
 			if bucket not in buckets:
 				buckets[bucket] = []
-			buckets[bucket].append((time,value))
+			buckets[bucket].append(obj)
 		avgs = []
 
 		mintime = datetime.utcfromtimestamp(bucketparams["mintime"]).replace(tzinfo=pytz.timezone("UTC"))
@@ -47,11 +48,11 @@ class TimeData:
 			start_time = datetime.utcfromtimestamp(unixtime).replace(tzinfo=pytz.timezone("UTC"))
 			if start_time != mintime:
 				start_value = self.interpolate(start_time)
-				bucketdata.insert(0,(start_time,start_value))
+				bucketdata.insert(0,start_value)
 			end_time = datetime.utcfromtimestamp(unixtime + bucketparams["interval"]).replace(tzinfo=pytz.timezone("UTC"))
 			if end_time != maxtime:
 				end_value = self.interpolate(end_time)
-				bucketdata.append((end_time,end_value))
+				bucketdata.append(end_value)
 			stats = weightedstats(bucketdata)
 			avgs.append({"end_time" : end_time,"avg" :  stats["avg"],"min": stats["min"],"max":stats["max"]})
 		avgs.sort(lambda x,y:  1 if x["end_time"] > y["end_time"] else -1)
@@ -103,7 +104,9 @@ class TimeData:
 			post_entry = self._data[i]
 	
 			value = (post_entry.value - prior_entry.value)/timedelta_seconds(post_entry.time - prior_entry.time) * timedelta_seconds(time - prior_entry.time) + prior_entry.value
-			return value
+
+			rval = IOValue(smoker_io_id=post_entry.smoker_io_id,value=value,time=time)
+			return rval
 		else:
 			return None
 	
@@ -111,34 +114,34 @@ class TimeData:
 def weightedstats(data):
 	stats = dict()
 	datapts = len(data) - len(data) % 2
-	totaltime = (data[datapts - 1][0] - data[0][0])
+	totaltime = (data[datapts - 1].time - data[0].time)
 	totalseconds = totaltime.days * 24*3600.0 + totaltime.seconds + totaltime.microseconds / 1000000.0
 	tsec = 0.0
 	accum = 0.0
 	stats["min"] = data[0]
 	stats["max"] = data[0]
 
-	if data[datapts - 1][1] < stats["min"][1]:
+	if data[datapts - 1].value < stats["min"].value:
 		stats["min"] = data[datapts - 1]
-	if data[datapts - 1][1] > stats["max"][1]:
+	if data[datapts - 1].value > stats["max"].value:
 		stats["max"] = data[datapts - 1]
 
 	for i in range(0,datapts-1):
-		smpltime = (data[i+1][0] - data[i][0])
+		smpltime = (data[i+1].time - data[i].time)
 		seconds = smpltime.days * 24*3600.0 + smpltime.seconds + smpltime.microseconds / 1000000.0
 
-		if data[i][1] < stats["min"][1]:
+		if data[i].value < stats["min"].value:
 			stats["min"] = data[i]
-		if data[i][1] > stats["max"][1]:
+		if data[i].value > stats["max"].value:
 			stats["max"] = data[i]
 
-		value = (data[i+1][1] + data[i][1])/2.0
+		value = (data[i+1].value + data[i].value)/2.0
 		#print seconds,value
 		accum += value*seconds
 		tsec += seconds
 	#print totalseconds,tsec,accum
-	stats["min"] = {"time":stats["min"][0],"value":stats["min"][1]}
-	stats["max"] = {"time":stats["max"][0],"value":stats["max"][1]}
+	stats["min"] = {"time":stats["min"].time,"value":stats["min"].value}
+	stats["max"] = {"time":stats["max"].time,"value":stats["max"].value}
 	stats["avg"] = accum / tsec
 	return stats
 
