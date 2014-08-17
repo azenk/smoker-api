@@ -76,6 +76,13 @@ def create_or_update_user(token, userinfo, **params):
 	database.db_session.commit()
 	return redirect('/client/SmokerGraphs.html')
 
+@app.route("/user/info")
+def userinfo():
+	if current_user.is_anonymous():
+		return jsonify(logged_in=False)
+	else:
+		return jsonify(logged_in=True,name=current_user.name)
+
 @app.route("/login")
 @login_required
 def login():
