@@ -36,6 +36,7 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
 				params = SmokerIO.query.filter(SmokerIO.smoker_id == 1).filter(SmokerIO.vartype == 'parameter').all()
 				for param in params:
 					self.wfile.write("%s:%f\n" % (param.varname,param.latestvalue().value))
+					print("%s:%f" % (param.varname,param.latestvalue().value))
 				self.wfile.write("sendcomplete:1.0\n")
 				print("sendcomplete")
 
@@ -63,6 +64,7 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
 
 				if error_count >= 3:
 					print("Closing Connection due to errors")
+				database.db_session.close()
 
         # Likewise, self.wfile is a file-like object used to write back
         # to the client
