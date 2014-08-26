@@ -81,7 +81,7 @@ def userinfo():
 	if current_user.is_anonymous():
 		return jsonify(logged_in=False)
 	else:
-		return jsonify(logged_in=True,name=current_user.name)
+		return jsonify(logged_in=True,update=current_user.update,administrator=current_user.administrator,name=current_user.name)
 
 @app.route("/login")
 @login_required
@@ -101,10 +101,7 @@ def logout():
 		app.logger.debug("Logged out user %s" % current_user.name)
 		logout_user()
 		session.clear()
-	return """
-        <p>Logged out</p>
-        <p><a href="/">Return to /</a></p>
-        """
+	return redirect('/client/SmokerGraphs.html')
 
 @app.route('/profile')
 @login_required
@@ -139,7 +136,7 @@ def list_io(smoker_id):
 @app.route('/smoker/<int:smoker_id>/parameters/<paramname>',methods=['POST'])
 @login_required
 def set_parameter(smoker_id,paramname):
-	if request.method == 'POST':
+	if request.method == 'POST' and (current_user.administrator or current_user.update):
 		value = request.form['value']
 		io = SmokerIO.query.filter(SmokerIO.smoker_id == smoker_id).filter(SmokerIO.varname == paramname).first()
 		v = IOValue(smoker_io_id=io.id,value=value)
