@@ -16,7 +16,7 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
 			except:
 				previous = None
 		
-			if previous == None or previous.value == value or (datetime.now().replace(tzinfo=previous.time.tzinfo) - previous.time) > timedelta(seconds=14):
+			if previous == None or previous.value != value or (datetime.now().replace(tzinfo=previous.time.tzinfo) - previous.time) > timedelta(seconds=14):
 				if sensorname in valuecache:
 					database.db_session.add(valuecache[sensorname])
 					del valuecache[sensorname]
@@ -27,7 +27,6 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
 				v = IOValue(smoker_io_id = io.id,time=time,value=value)
 				valuecache[sensorname] = v
 
-			database.db_session.commit()
 
     def handle(self):
         # self.rfile is a file-like object created by the handler;
@@ -62,9 +61,9 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
 						error_count += 1
 						print(e)
 
+				database.db_session.commit()
 				if error_count >= 3:
 					print("Closing Connection due to errors")
-				database.db_session.close()
 
         # Likewise, self.wfile is a file-like object used to write back
         # to the client
