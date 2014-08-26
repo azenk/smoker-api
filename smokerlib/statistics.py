@@ -28,7 +28,7 @@ class TimeData:
 		# Populate full dict of buckets
 		for time in range(bucketparams["mintime"],bucketparams["maxtime"],bucketparams["interval"]):
 			buckets[time] = []
-	
+
 		for obj in self._data:
 			time = obj.time
 			value = obj.value
@@ -54,8 +54,9 @@ class TimeData:
 				end_value = self.interpolate(end_time)
 				bucketdata.append(end_value)
 			stats = weightedstats(bucketdata)
-			avgs.append({"end_time" : end_time,"avg" :  stats["avg"],"min": stats["min"],"max":stats["max"]})
-		avgs.sort(lambda x,y:  1 if x["end_time"] > y["end_time"] else -1)
+			midpoint = start_time + (end_time - start_time) / 2
+			avgs.append({"time" : midpoint,"value" :  stats["avg"], "units": self._data[0].smoker_io.unit_abbrev ,"min": stats["min"],"max":stats["max"]})
+		avgs.sort(lambda x,y:  1 if x["time"] > y["time"] else -1)
 	
 		return avgs
 	

@@ -151,18 +151,37 @@ def set_parameter(smoker_id,paramname):
 def get_io_values(smoker_id,varname):
 
 	starttime = request.args.get('start','')
-	interval = request.args.get('interval',15)
-	time_interval = int(interval)
+	endtime = request.args.get('end','')
+	interval = request.args.get('interval',None)
 
 	if starttime == '':
 		v = IOValue.query.join(IOValue.smoker_io).filter(SmokerIO.smoker_id == smoker_id).filter(SmokerIO.varname == varname).order_by(desc(IOValue.time)).first()	
 		return jsonify(time=v.time,value=v.value,units=v.smoker_io.unit_abbrev)
-	else:
+
+	basequery = IOValue.query.join(IOValue.smoker_io).filter(SmokerIO.smoker_id == smoker_id).filter(SmokerIO.varname == varname)	
+
+	if starttime != '':
 		start = datetime.strptime(starttime,'%Y%m%d-%H:%M:%S.%f')
-		v = IOValue.query.join(IOValue.smoker_io).filter(SmokerIO.smoker_id == smoker_id).filter(SmokerIO.varname == varname).filter(IOValue.time > start).order_by(IOValue.time).all()	
+		basequery = basequery.filter(IOValue.time > start)
+	
+	if endtime != '':
+		end = datetime.strptime(endtime,'%Y%m%d-%H:%M:%S.%f')
+		basequery = basequery.filter(IOValue.time <= end)
+
+	v = basequery.order_by(IOValue.time).all()	
+
+	if len(v) == 0:
+		return jsonify(result=[])
+		
+	if interval == None:
+		result = map(lambda x: {"time":x.time,"value":x.value,"units":x.smoker_io.unit_abbrev},v)
+		return jsonify(result=result)
+	else:
+		time_interval = int(interval)
 		data = TimeData(v)
 		wi = data.weighted_intervals(time_interval)
 		return jsonify(result=wi)
+	
 
 
 @app.route('/smoker/<int:smoker_id>/power/batterycharge',methods=['GET'])
