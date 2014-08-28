@@ -24,7 +24,7 @@ app.secret_key = smokerconfig.sessionsecret
 app.config["GOOGLE_LOGIN_CLIENT_ID"] = smokerconfig.google_client_id
 app.config["GOOGLE_LOGIN_CLIENT_SECRET"] = smokerconfig.google_client_secret
 #app.config["GOOGLE_LOGIN_SCOPES"] = ""
-app.config["GOOGLE_LOGIN_REDIRECT_URI"] = "https://smoker.culinaryapparatus.com/devapi/oauth2callback"
+app.config["GOOGLE_LOGIN_REDIRECT_URI"] = smokerconfig.apibaseurl + "/oauth2callback"
 app.config["GOOGLE_LOGIN_REDIRECT_SCHEME"] = "https"
 app.debug = False
 googlelogin = GoogleLogin()
@@ -52,9 +52,12 @@ def close_db(error):
 
 @app.route('/oauth2callback')
 @googlelogin.oauth2callback
-def create_or_update_user(token, userinfo, **params):
+def create_or_update_user(token=None, userinfo=None, **params):
 	app.logger.debug("Entered OAUTH2 Callback")
 	app.logger.debug("Received oauth2 callback - userinfo: %s" % repr(userinfo))
+	
+	if token == None and userinfo == None:
+		return redirect('/client/SmokerGraphs.html')
 
 	userq = User.query.filter(User.google_id == userinfo["id"])
 
