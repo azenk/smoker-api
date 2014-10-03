@@ -1,6 +1,5 @@
 import SocketServer
 import threading
-import psycopg2
 from datetime import datetime,timedelta
 from smokerlib import *
 
