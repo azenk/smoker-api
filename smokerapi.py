@@ -136,6 +136,39 @@ def list_io(smoker_id):
 
 	return jsonify(smoker_io=io)
 
+@app.route('/smoker/<int:smoker_id>/cook', methods=['GET'])
+def list_cooks(smoker_id):
+	db_cooks = Cook.query.filter(Cook.smoker_id == smoker_id)
+	cooks = []
+	for cook in db_cooks:
+		cooks.append(dict(id=cook.id,name=cook.name,start=cook.start,stop=cook.stop,description=cook.description))
+
+	return jsonify(cooks=cooks)
+
+@app.route('/smoker/<int:smoker_id>/cook/<int:cook_id>/note', methods=['POST'])
+@login_required
+def create_note(smoker_id,cook_id):
+	if request.method == 'POST' and (current_user.administrator or current_user.update):
+		if 'text' in request.form:
+			text = request.form['text']
+			cook = Cook.query.filter(Cook.smoker_id == smoker_id).filter(Cook.id == cook_id).first()
+			note = Note(cook_id=cook.id)
+			note.text = text
+			database.db_session.add(note)
+			database.db_session.commit()
+			return jsonify(return_value=0)
+	else:
+		return jsonify(return_value=-1)
+
+@app.route('/smoker/<int:smoker_id>/cook/<int:cook_id>/note', methods=['GET'])
+def list_notes(smoker_id,cook_id):
+	cook = Cook.query.filter(Cook.smoker_id == smoker_id).filter(Cook.id == cook_id).first()
+	db_notes = cook.notes
+	notes = []
+	for note in db_notes:
+		notes.append(dict(id=note.id,time=note.time,note=note.note))
+	return jsonify(notes=notes)
+
 @app.route('/smoker/<int:smoker_id>/parameters/<paramname>',methods=['POST'])
 @login_required
 def set_parameter(smoker_id,paramname):

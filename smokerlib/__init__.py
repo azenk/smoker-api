@@ -6,4 +6,7 @@ from .statistics import weightedstats
 from .smoker import Smoker
 from .smoker import SmokerIO
 from .smoker import IOValue
+from .smoker import Cook
+from .smoker import Note
+from .smoker import Weather
 
