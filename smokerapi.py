@@ -17,8 +17,6 @@ import smokerconfig
 
 import sys
 
-import psycopg2
-
 app = Flask(__name__)
 app.secret_key = smokerconfig.sessionsecret
 app.config["GOOGLE_LOGIN_CLIENT_ID"] = smokerconfig.google_client_id
@@ -37,12 +35,6 @@ if not app.debug:
     file_handler.setLevel(logging.DEBUG)
     app.logger.setLevel(logging.DEBUG)
     app.logger.addHandler(file_handler)
-
-
-def get_db():
-	if not hasattr(g, 'database'):
-		g.database = psycopg2.connect("dbname=smoker user=apache")
-	return g.database
 
 @app.teardown_appcontext
 def close_db(error):
