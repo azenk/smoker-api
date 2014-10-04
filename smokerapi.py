@@ -29,12 +29,12 @@ googlelogin = GoogleLogin()
 googlelogin.init_app(app)
 
 if not app.debug:
-    import logging
-    from logging.handlers import RotatingFileHandler
-    file_handler = RotatingFileHandler("/websites/applogs/smokerapi.log",maxBytes=10*2**20,backupCount=7)
-    file_handler.setLevel(logging.DEBUG)
-    app.logger.setLevel(logging.DEBUG)
-    app.logger.addHandler(file_handler)
+	import logging
+	from logging.handlers import RotatingFileHandler
+	file_handler = RotatingFileHandler("/websites/applogs/smokerapi.log",maxBytes=10*2**20,backupCount=7)
+	file_handler.setLevel(logging.DEBUG)
+	app.logger.setLevel(logging.DEBUG)
+	app.logger.addHandler(file_handler)
 
 @app.teardown_appcontext
 def close_db(error):
@@ -104,7 +104,7 @@ def profile():
 	return "Hello %s %s" % (current_user.name,current_user.email)
 #@app.route('/')
 #def hello_world():
-    #return 'Hello World!'
+	#return 'Hello World!'
 
 @app.route('/smoker',methods=['GET'])
 def list_smokers():
@@ -167,7 +167,7 @@ def set_parameter(smoker_id,paramname):
 	if request.method == 'POST' and (current_user.administrator or current_user.update):
 		value = request.form['value']
 		io = SmokerIO.query.filter(SmokerIO.smoker_id == smoker_id).filter(SmokerIO.varname == paramname).first()
-		v = IOValue(smoker_io_id=io.id,value=value)
+		v = IOValue(smoker_io_id=io.id, value=value)
 		database.db_session.add(v)
 		database.db_session.commit()
 	return jsonify(return_value=0)
@@ -231,4 +231,4 @@ def get_battery_charge(smoker_id):
 	return jsonify(time=v.time,value=charge,units='%')
 
 if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0",port=8000)
+	socketio.run(app, host="0.0.0.0",port=8000)

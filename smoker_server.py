@@ -12,9 +12,9 @@ from smokerconfig import wunderground_apikey
 valuecache = dict()
 
 class MyTCPHandler(SocketServer.StreamRequestHandler):
-    timeout = 1
+	timeout = 1
 
-    def insertvalue(self,sensorname,value):
+	def insertvalue(self,sensorname,value):
 			io = SmokerIO.query.filter(SmokerIO.smoker_id == 1).filter(SmokerIO.varname == sensorname).first()
 			try:
 				previous = io.latestvalue()
@@ -33,9 +33,9 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
 				valuecache[sensorname] = v
 
 
-    def handle(self):
-        # self.rfile is a file-like object created by the handler;
-        # we can now use e.g. readline() instead of raw recv() calls
+	def handle(self):
+		# self.rfile is a file-like object created by the handler;
+		# we can now use e.g. readline() instead of raw recv() calls
 				print("Connection opened, sending saved parameters")
 				params = SmokerIO.query.filter(SmokerIO.smoker_id == 1).filter(SmokerIO.vartype == 'parameter').all()
 				for param in params:
@@ -70,12 +70,12 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
 				if error_count >= 3:
 					print("Closing Connection due to errors")
 
-        # Likewise, self.wfile is a file-like object used to write back
-        # to the client
-        #self.wfile.write(self.data.upper())
+		# Likewise, self.wfile is a file-like object used to write back
+		# to the client
+		#self.wfile.write(self.data.upper())
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
-    pass
+	pass
 
 class WundergroundThread(threading.Thread):
 	def __init__(self,zipcode,apikey):
@@ -117,18 +117,18 @@ class WundergroundThread(threading.Thread):
 
 
 if __name__ == "__main__":
-    HOST, PORT = "0.0.0.0", 9500
+	HOST, PORT = "0.0.0.0", 9500
 
-    wt = WundergroundThread(zipcode="pws:KMNMINNE43",apikey=wunderground_apikey)
-    wt.start()
+	wt = WundergroundThread(zipcode="pws:KMNMINNE43",apikey=wunderground_apikey)
+	wt.start()
 
-    # Create the server, binding to localhost on port 9999
-    SocketServer.TCPServer.allow_reuse_address = True
-    server = ThreadedTCPServer((HOST, PORT), MyTCPHandler)
+	# Create the server, binding to localhost on port 9999
+	SocketServer.TCPServer.allow_reuse_address = True
+	server = ThreadedTCPServer((HOST, PORT), MyTCPHandler)
 
-    # Activate the server; this will keep running until you
-    # interrupt the program with Ctrl-C
-    server.serve_forever()
+	# Activate the server; this will keep running until you
+	# interrupt the program with Ctrl-C
+	server.serve_forever()
 
-    wt.join()
+	wt.join()
 
